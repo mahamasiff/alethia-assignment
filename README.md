@@ -33,7 +33,7 @@ One process per GPU. In each process:
 2. **Decoder threads** (PyAV, in memory) handle each video:
    - apply the container rotation tag, matching ffmpeg's autorotate
    - optionally keep only *k* frames per second
-   - resize each frame to the exact size the Ultralytics letterbox would. Ultralytics then skips its own resize, so the pixels are identical but the work moves off the GPU thread.
+   - resize each frame to the exact size the Ultralytics letterbox would. Ultralytics then skips its own resize, so the pixels are identical but the work moves off the inference thread.
    - batch frames from one video only, so Ultralytics keeps the same rectangular letterbox as single-video inference
 3. **Main thread** runs YOLO on the batches and aggregates per second:
    - second N = frames whose `(pts − pts_first_frame) · time_base` is in [N, N+1)
@@ -42,12 +42,13 @@ One process per GPU. In each process:
    - every second from 0 up to the last frame's second gets a line; seconds without frames get `[]` and 0
 
 **Failures.** A damaged video keeps the lines for the seconds it did decode, then gets one `error` line.
-An unreadable parquet file or row group gets error lines for the affected videos.
+A row group that can't be read gets one error line per video in it.
+A parquet file that can't be opened at all gets a single error line (`<file>:0`), because its row count is unknown.
 Any video that no worker finished gets an error line during the final merge.
 
 ## Validation (`check.py`)
 
-- `compare ref.jsonl cand.jsonl`: the grader's metrics (object F1, people exact, people within 1).
+- `compare ref.jsonl cand.jsonl [--clip]`: the grader's metrics (object F1, people exact, people within 1). `--clip` scores only the seconds the reference has.
 - `sweep --ref ... --cand ... --k ...`: uses per-frame dumps (`run.py --dump-frames`) from one every-frame run to simulate any frames-per-second setting offline, without the GPU.
   Simulating FP16 needs one FP16 every-frame dump.
 - `rotation --input ...`: checks our upright frames against OpenCV's autorotate.
@@ -56,6 +57,7 @@ Any video that no worker finished gets an error line during the final merge.
 
 - `kaggle_batches.py`: resumable batch driver. For each batch of 3 parquet files it downloads them to `/tmp`, runs `run.py` with default settings, renames `res_NN.jsonl.tmp` to `res_NN.jsonl` only if `run.py` exits 0, and deletes the batch's data.
   It appends one line per batch to `batches.log` (files, videos, video-hours, elapsed), skips batches whose `res_NN.jsonl` exists, and stops at an optional hard cutoff (`--stop-at HH:MM`).
+- `video_indexing_kaggle.ipynb`: the Kaggle notebook with every development and measurement run, in order, with results.
 - `merge_results.py`: merges `results.jsonl` and the complete `res_NN.jsonl` files. It refuses to write the result if a video is duplicated or missing, judged against the row counts in `manifest.jsonl`, or if a video's seconds have gaps.
 
 ## Results
@@ -64,7 +66,7 @@ Hardware and software for these runs: see [HARDWARE.md](HARDWARE.md).
 
 ### Accuracy and chosen settings
 
-Reference: FP32, every frame, on the first 40 s of the first 32 videos of `train-00000` (1,270 seconds).
+Reference: FP32, every frame, on the first 40 s of the first 32 videos in file order, starting with `train-00000` (1,270 seconds).
 Frame sampling and FP16 were simulated from per-frame dumps (`check.py sweep`).
 Thresholds: F1 ≥ 0.95, people exact ≥ 0.85, people within 1 ≥ 0.95.
 
@@ -82,7 +84,7 @@ Thresholds: F1 ≥ 0.95, people exact ≥ 0.85, people within 1 ≥ 0.95.
 
 **Defaults: FP16, 5 frames per second.** FP16 changes nothing measurable.
 5 frames per second keeps a margin of about 0.03 on F1, the tightest metric, for unseen videos.
-On the T4s, every-frame inference ran at about 50 fps per GPU in FP32 and 114 fps in FP16.
+On the T4s, every-frame inference ran at about 50 fps per GPU in FP32 and 114 fps in FP16. These sample runs shared the CPU with the rotation check and a pip install, so the speeds are approximate.
 
 **Real run check:** the 2-file run's output, scored on the reference seconds (`check.py compare --clip`), gave F1 0.9819, exact 0.9543 and within 1 0.9984.
 That is identical to the simulated FP16 5-frames-per-second row, so the offline sweep reproduces the real pipeline.
@@ -95,13 +97,16 @@ None of them carries a rotation tag, so the rotation path itself is untested on 
 
 ### Coverage
 
-Only the parquet files listed here were processed. Everything else in the first 50 files was not.
+Only the parquet files listed here were processed. The other 48 of the first 50 files (`train-00002` … `train-00049`) were not.
 
-| batch | parquet files | videos | video-hours | run.py elapsed | status |
+| run | parquet files | videos | video-hours | run.py elapsed | status |
 |---|---|---|---|---|---|
 | initial | `train-00000`, `train-00001` | 66 | 5.22 | 447.9 s (42× real time; ~106 analysed fps per T4) | complete, exit 0, 0 errors |
-| _batches from `batches.log` are added after the batch run_ | | | | | |
 
-**Total covered:** _TBD from `merge_results.py`_.
+**Total covered:** 2 of 50 files, 66 videos, 5.22 video-hours.
+The batch runner (`kaggle_batches.py`) for the remaining files is ready but has not been run yet. If it is run, this table will be updated from `batches.log` and `merge_results.py`.
 
-**Limitation:** with about 4 h of free Kaggle 2×T4, only part of the 50 files was processed, and the FP32 every-frame reference was built on a sample.
+**Limitations:**
+- With about 4 h of free Kaggle 2×T4, only 2 of the 50 files were processed, and the FP32 every-frame reference was built on a sample.
+- All timings are from Kaggle T4s, not the grader's RTX 4090.
+- `requirements.txt` on Python 3.11: the first install test failed (av 19 needs Python ≥ 3.12), so av was pinned to 18.1.1. The result of the retry was not recorded.

@@ -22,9 +22,8 @@ So the measured runs used newer torch/PyAV builds than the graded run will.
 
 ## Data covered
 
-Only the FineVideo parquet files listed here were processed. Everything else in the first 50 files (`train-00000` … `train-00049`) was not.
+Only the FineVideo parquet files listed here were processed. The other 48 of the first 50 files (`train-00002` … `train-00049`) were not.
 
 | parquet files | videos | status |
 |---|---|---|
 | `train-00000-of-01357.parquet`, `train-00001-of-01357.parquet` | 66 (5.22 video-hours) | complete, exit 0, 0 errors; run.py 447.9 s |
-| _batch files from `batches.log` are added after the batch run_ | | |
