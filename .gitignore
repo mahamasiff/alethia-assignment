@@ -1,0 +1,21 @@
+﻿# Model weights and large media (don't push to GitHub)
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.safetensors
+*.bin
+weights/
+*.mp4
+*.avi
+*.mov
+*.mkv
+data/
+outputs/
+
+# Python / Jupyter
+__pycache__/
+.ipynb_checkpoints/
+.venv/
+venv/
+.env
