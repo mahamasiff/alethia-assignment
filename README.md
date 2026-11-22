@@ -52,9 +52,50 @@ Any video that no worker finished gets an error line during the final merge.
   Simulating FP16 needs one FP16 every-frame dump.
 - `rotation --input ...`: checks our upright frames against OpenCV's autorotate.
 
+## Development tools (Kaggle only, not used by the graded run)
+
+- `kaggle_batches.py`: resumable batch driver. For each batch of 3 parquet files it downloads them to `/tmp`, runs `run.py` with default settings, renames `res_NN.jsonl.tmp` to `res_NN.jsonl` only if `run.py` exits 0, and deletes the batch's data.
+  It appends one line per batch to `batches.log` (files, videos, video-hours, elapsed), skips batches whose `res_NN.jsonl` exists, and stops at an optional hard cutoff (`--stop-at HH:MM`).
+- `merge_results.py`: merges `results.jsonl` and the complete `res_NN.jsonl` files. It refuses to write the result if a video is duplicated or missing, judged against the row counts in `manifest.jsonl`, or if a video's seconds have gaps.
+
 ## Results
 
-_TODO: hardware (Kaggle 2×T4), files processed, fps, sweep table, chosen defaults._
+Hardware and software for these runs: see [HARDWARE.md](HARDWARE.md).
 
-**Limitation:** with ~4 h of free Kaggle 2×T4, only the first few parquet files were processed,
-and the FP32 every-frame reference was built on a sample.
+### Accuracy and chosen settings
+
+Reference: FP32, every frame, on the first 40 s of the first 32 videos of `train-00000` (1,270 seconds).
+Frame sampling and FP16 were simulated from per-frame dumps (`check.py sweep`).
+Thresholds: F1 ≥ 0.95, people exact ≥ 0.85, people within 1 ≥ 0.95.
+
+| frames/sec | FP32: F1 / exact / within 1 | FP16: F1 / exact / within 1 |
+|---|---|---|
+| all | 1.0000 / 1.0000 / 1.0000 | 1.0000 / 0.9984 / 1.0000 |
+| 1 | 0.9369 / 0.8732 / 0.9717 (FAIL) | 0.9369 / 0.8732 / 0.9717 (FAIL) |
+| 2 | 0.9584 / 0.9063 / 0.9882 | 0.9584 / 0.9071 / 0.9882 |
+| 3 | 0.9699 / 0.9425 / 0.9953 | 0.9699 / 0.9425 / 0.9953 |
+| 4 | 0.9794 / 0.9425 / 0.9937 | 0.9794 / 0.9417 / 0.9937 |
+| **5** | 0.9825 / 0.9535 / 0.9984 | **0.9819 / 0.9543 / 0.9984** |
+| 6 | 0.9822 / 0.9551 / 0.9976 | 0.9822 / 0.9583 / 0.9976 |
+| 8 | 0.9893 / 0.9661 / 0.9992 | 0.9899 / 0.9646 / 0.9992 |
+| 10 | 0.9899 / 0.9740 / 0.9992 | 0.9910 / 0.9740 / 0.9992 |
+
+**Defaults: FP16, 5 frames per second.** FP16 changes nothing measurable.
+5 frames per second keeps a margin of about 0.03 on F1, the tightest metric, for unseen videos.
+On the T4s, every-frame inference ran at about 50 fps per GPU in FP32 and 114 fps in FP16.
+
+**Rotation:** 64 videos from `train-00000`/`train-00001` matched OpenCV's autorotated frames, with 0 mismatches.
+None of them carries a rotation tag, so the rotation path itself is untested on real data.
+
+### Coverage
+
+Only the parquet files listed here were processed. Everything else in the first 50 files was not.
+
+| batch | parquet files | videos | video-hours | run.py elapsed | status |
+|---|---|---|---|---|---|
+| initial | `train-00000`, `train-00001` | 66 | _TBD_ | _TBD_ | complete, exit 0 |
+| _batches from `batches.log` are added after the batch run_ | | | | | |
+
+**Total covered:** _TBD from `merge_results.py`_.
+
+**Limitation:** with about 4 h of free Kaggle 2×T4, only part of the 50 files was processed, and the FP32 every-frame reference was built on a sample.
