@@ -42,14 +42,15 @@ def load_results(path):
     return res, errs
 
 
-def score(ref, cand, quiet=False):
+def score(ref, cand, quiet=False, clip=False):
     tp = fp = fn = 0
     n = exact = within1 = 0
     per_class = {c: [0, 0, 0] for c in CLASS_NAMES}
     missing = 0
     for vid, secs in ref.items():
         csecs = cand.get(vid, {})
-        for s in set(secs) | set(csecs):
+        # clip: only score seconds the reference has (reference built with --max-seconds)
+        for s in (set(secs) if clip else set(secs) | set(csecs)):
             r_obj, r_ppl = secs.get(s, (frozenset(), None))
             c_obj, c_ppl = csecs.get(s, (frozenset(), None))
             tp += len(r_obj & c_obj)
@@ -87,7 +88,7 @@ def cmd_compare(a):
     print(f"errors: ref {len(ref_err)}, cand {len(cand_err)}")
     for v in sorted(set(cand_err) - set(ref_err))[:20]:
         print(f"   cand-only error {v}: {cand_err[v]}")
-    _, ok = score(ref, cand)
+    _, ok = score(ref, cand, clip=a.clip)
     sys.exit(0 if ok else 1)
 
 
@@ -185,6 +186,8 @@ def main():
     p = sub.add_parser("compare")
     p.add_argument("ref")
     p.add_argument("cand")
+    p.add_argument("--clip", action="store_true",
+                   help="score only seconds present in ref (ref made with --max-seconds)")
     p.set_defaults(fn=cmd_compare)
     p = sub.add_parser("sweep")
     p.add_argument("--ref", required=True, help="glob of FP32 every-frame dumps")
