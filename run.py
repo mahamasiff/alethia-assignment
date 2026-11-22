@@ -31,6 +31,13 @@ import traceback
 from fractions import Fraction
 from pathlib import Path
 
+# The timed run is offline: stop Ultralytics from probing the network (also
+# inherited by the spawned per-GPU workers).
+os.environ.setdefault("YOLO_OFFLINE", "1")
+
+# Weights live next to this file (put there by prepare.sh), whatever the cwd is.
+WEIGHTS = Path(__file__).resolve().parent / "yolo11l.pt"
+
 CLASS_IDS = (0, 2, 16, 63, 67)
 CLASS_NAMES = ("person", "car", "dog", "laptop", "cell phone")
 CLASS_INDEX = {c: i for i, c in enumerate(CLASS_IDS)}
@@ -422,7 +429,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--input", required=True, help="folder of .parquet files")
     ap.add_argument("--output", required=True, help="results .jsonl")
-    ap.add_argument("--model", default=str(Path(__file__).with_name("yolo11l.pt")))
+    ap.add_argument("--model", default=str(WEIGHTS), help="local .pt file (never downloaded)")
     ap.add_argument("--samples-per-sec", type=int, default=DEFAULT_SAMPLES_PER_SEC,
                     help="frames analysed per second of video (0 = all)")
     ap.add_argument("--half", action=argparse.BooleanOptionalAction, default=DEFAULT_HALF)
@@ -437,8 +444,11 @@ def main():
     ap.add_argument("--dump-frames", default="", help="prefix for per-frame dumps (for check.py sweep)")
     args = ap.parse_args()
 
-    if not Path(args.model).exists():
-        args.model = "yolo11l.pt"  # let Ultralytics resolve/download it (dev only)
+    # Absolute path to an existing file: Ultralytics loads it directly and never
+    # downloads (a bare "yolo11l.pt" would be looked up/downloaded relative to the cwd).
+    args.model = str(Path(args.model).resolve())
+    if not Path(args.model).is_file():
+        sys.exit(f"model weights not found at {args.model}; run `bash prepare.sh` first")
 
     import torch
 

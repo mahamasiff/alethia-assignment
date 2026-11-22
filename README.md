@@ -3,12 +3,26 @@
 `run.py` reads FineVideo parquet files and, for every second of every video, writes which of
 person / car / dog / laptop / cell phone are present (YOLO11l, imgsz 640, conf ≥ 0.4) and the people count.
 
+## Install (once, with internet, untimed)
+
+```bash
+pip install -r requirements.txt
+bash prepare.sh
 ```
+
+`prepare.sh` downloads the official `yolo11l.pt` (Ultralytics assets release, about 51 MB, no login) into the folder that holds `run.py`.
+It skips the download if the file is already there.
+It checks the file size and that Ultralytics loads the file as a COCO model, and exits non-zero with a message if anything is wrong.
+
+## Run (timed, offline)
+
+```bash
 python run.py --input <folder of .parquet files> --output results.jsonl
 ```
 
-`yolo11l.pt` must sit next to `run.py` (the grading VM has no internet).
-Requirements: `ultralytics`, `torch`, `av` (PyAV ≥ 14), `pyarrow`, `opencv-python`.
+`run.py` loads the weights from its own folder by absolute path, whatever the current directory is.
+It never downloads anything: if the weights are missing it exits and asks you to run `prepare.sh`.
+It sets `YOLO_OFFLINE=1`, so Ultralytics doesn't probe the network either.
 
 ## How it works
 
