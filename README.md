@@ -93,7 +93,7 @@ Only the parquet files listed here were processed. Everything else in the first 
 
 | batch | parquet files | videos | video-hours | run.py elapsed | status |
 |---|---|---|---|---|---|
-| initial | `train-00000`, `train-00001` | 66 | _TBD_ | _TBD_ | complete, exit 0 |
+| initial | `train-00000`, `train-00001` | 66 | 5.22 | 447.9 s (42× real time; ~106 analysed fps per T4) | complete, exit 0, 0 errors |
 | _batches from `batches.log` are added after the batch run_ | | | | | |
 
 **Total covered:** _TBD from `merge_results.py`_.

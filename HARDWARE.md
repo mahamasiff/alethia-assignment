@@ -26,5 +26,5 @@ Only the FineVideo parquet files listed here were processed. Everything else in 
 
 | parquet files | videos | status |
 |---|---|---|
-| `train-00000-of-01357.parquet`, `train-00001-of-01357.parquet` | 66 | complete, exit 0 |
+| `train-00000-of-01357.parquet`, `train-00001-of-01357.parquet` | 66 (5.22 video-hours) | complete, exit 0, 0 errors; run.py 447.9 s |
 | _batch files from `batches.log` are added after the batch run_ | | |
