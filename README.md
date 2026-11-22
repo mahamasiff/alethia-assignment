@@ -84,6 +84,12 @@ Thresholds: F1 ≥ 0.95, people exact ≥ 0.85, people within 1 ≥ 0.95.
 5 frames per second keeps a margin of about 0.03 on F1, the tightest metric, for unseen videos.
 On the T4s, every-frame inference ran at about 50 fps per GPU in FP32 and 114 fps in FP16.
 
+**Real run check:** the 2-file run's output, scored on the reference seconds (`check.py compare --clip`), gave F1 0.9819, exact 0.9543 and within 1 0.9984.
+That is identical to the simulated FP16 5-frames-per-second row, so the offline sweep reproduces the real pipeline.
+Per class: person 0.988, car 0.957, dog 1.000, laptop 0.915, cell phone 0.939.
+F1 here is pooled over all objects, and the class-average is 0.960.
+If the grader required every class ≥ 0.95, laptop and cell phone (~30 positives each in this sample) would be at risk; `--samples-per-sec 10` is the fallback.
+
 **Rotation:** 64 videos from `train-00000`/`train-00001` matched OpenCV's autorotated frames, with 0 mismatches.
 None of them carries a rotation tag, so the rotation path itself is untested on real data.
 
