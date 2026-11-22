@@ -46,8 +46,8 @@ CONF = 0.4
 
 # Defaults used when the grader runs `python run.py --input ... --output ...`.
 # Change these only after check.py shows the faster setting still passes.
-DEFAULT_SAMPLES_PER_SEC = 0  # 0 = every frame
-DEFAULT_HALF = False         # FP16 inference
+DEFAULT_SAMPLES_PER_SEC = 5  # 0 = every frame; 5 passes with margin (see README)
+DEFAULT_HALF = True          # FP16 inference (matches FP32 within 0.002)
 
 
 def log(*a):
