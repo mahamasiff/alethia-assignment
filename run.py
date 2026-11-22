@@ -382,7 +382,7 @@ def run_worker(rank, args, units, claimed, part_path, dump_path, device):
                 done += 1
             elif kind == "frames":
                 vid, imgs, meta = p
-                res = model.predict(imgs, imgsz=IMGSZ, conf=CONF, half=half,
+                res = model.predict(imgs, imgsz=IMGSZ, conf=CONF, quantize=16 if half else None,
                                     device=device, verbose=False)
                 st = states.setdefault(vid, {})
                 for (sec, t), r in zip(meta, res):
